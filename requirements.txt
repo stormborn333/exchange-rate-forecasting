@@ -22,6 +22,8 @@ dash-table==5.0.0
     # via dash
 flask==3.0.3
     # via dash
+gunicorn==22.0.0
+    # via -r requirements.in
 idna==3.7
     # via requests
 importlib-metadata==7.1.0
@@ -40,14 +42,16 @@ markupsafe==2.1.5
     #   werkzeug
 nest-asyncio==1.6.0
     # via dash
-numpy==1.26.4
+numpy==2.0.0
     # via
     #   -r requirements.in
     #   pandas
     #   scikit-learn
     #   scipy
 packaging==24.1
-    # via plotly
+    # via
+    #   gunicorn
+    #   plotly
 pandas==2.2.2
     # via -r requirements.in
 plotly==5.22.0

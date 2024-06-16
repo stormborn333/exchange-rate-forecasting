@@ -3,3 +3,4 @@ scikit-learn
 pandas
 dash
 plotly
+gunicorn

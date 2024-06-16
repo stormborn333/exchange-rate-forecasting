@@ -117,6 +117,11 @@ def update_plot(base_currency, target_currency, predict_days):
 
 
 # Run the app
-if __name__ == '__main__':
-    app.run_server(debug=True)
+# if __name__ == '__main__':
+#     app.run_server(debug=True)
+
+server = app.server
+
+if __name__ == "__main__":
+    app.run_server(host="0.0.0.0", port=8080)
 
