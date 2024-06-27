@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # In[1]:
-
 
 # System wspomagania decyzji inwestorskich
 # Paweł Kowalski
@@ -197,4 +193,215 @@ ax1.set_title('Trend')
 ax1.plot(result.trend, color='purple')
 plt.grid(color='gray')
 plt.show()
+
+
+# In[18]:
+
+
+# series1 = series
+# series = series[:]
+# print(series)
+
+
+# In[19]:
+
+
+# skalowanie danych
+scaler = MinMaxScaler(feature_range=(0, 1))
+series_scaled = scaler.fit_transform(series.reshape(-1, 1)).flatten()
+
+
+# In[20]:
+
+
+time = np.arange(len(series_scaled), dtype="float32")
+#print(len(time))
+#wykres pomocniczy
+# plt.figure(figsize=(8, 5))
+# plot_series(time, series_scaled)
+# plt.show()
+
+
+# In[21]:
+
+
+# Przygotowanie danych do uczenia
+split_time = int(len(series_scaled)*0.8)
+time_train = time[:split_time]
+x_train =series_scaled[:split_time]
+time_valid = time[split_time:]
+x_valid = series_scaled[split_time:]
+
+#wykres pomocniczy
+# plt.figure(figsize=(8, 5))
+# plot_series(time_valid, x_valid)
+# plt.show()
+
+
+# In[22]:
+
+
+# ustawienie parametrów uczenia
+epochs = 50 # tu może być wybór z podpowiedzią min 50
+# niestety model jest tylko dla danego ticker'a.
+# Będziemy trenować 100 modeli, czy czekamy na trening? Możemy założyć zewnętne zasoby
+
+window_size = 25 # tu się musimy zastanowić - powiązanie okna z predykcją
+batch_size = 64
+shuffle_buffer_size = 300
+
+
+# In[23]:
+
+
+# zestaw danych do trenowania modelu uczenia maszynowego
+def windowed_dataset(series_scaled, window_size, batch_size, shuffle_buffer_size):
+    series_scaled = tf.expand_dims(series_scaled, axis=-1)
+    dataset = tf.data.Dataset.from_tensor_slices(series_scaled)
+    dataset = dataset.window(window_size + 1, shift=1, drop_remainder=True)
+    dataset = dataset.flat_map(lambda window: window.batch(window_size + 1))
+    dataset = dataset.shuffle(shuffle_buffer_size).map(lambda window: (window[:-1], window[-1]))
+    dataset = dataset.batch(batch_size).prefetch(1)
+    return dataset
+
+
+# In[24]:
+
+
+dataset = windowed_dataset(x_train, window_size, batch_size, shuffle_buffer_size)
+valid_dataset = windowed_dataset(x_valid, window_size, batch_size, shuffle_buffer_size)
+
+
+# In[25]:
+
+
+# Definicja modelu -> wybór
+
+# długi czas
+# model = tf.keras.models.Sequential([
+#     tf.keras.layers.Dense(100, input_shape = [window_size], activation="relu"),
+#     tf.keras.layers.Dense(100, activation="relu"),
+#     tf.keras.layers.Dense(1)
+# ])
+# krótki czas
+model = tf.keras.models.Sequential([
+  tf.keras.layers.SimpleRNN(100, input_shape=[None, 1], return_sequences=True),
+  tf.keras.layers.SimpleRNN(100),
+  tf.keras.layers.Dense(1),
+])
+
+
+# In[26]:
+
+
+# zatrzymanie przy braku postępów
+stop_early = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=5)
+
+
+# In[27]:
+
+
+# uczenie
+optimizer = tf.keras.optimizers.SGD(learning_rate=1e-4, momentum=0.7)
+model.compile(loss=tf.keras.losses.Huber(), optimizer=optimizer, metrics=['mae'])
+history = model.fit(dataset, epochs=epochs,  verbose=1, validation_data=valid_dataset, callbacks=[stop_early])
+
+
+# In[28]:
+
+
+#przewidywania wartości na podstawie modelu trenowanego
+def model_forecast(model, series_scaled, window_size):
+    series = tf.expand_dims(series_scaled, axis=-1)
+    ds = tf.data.Dataset.from_tensor_slices(series_scaled)
+    ds = ds.window(window_size, shift=1, drop_remainder=True)
+    ds = ds.flat_map(lambda w: w.batch(window_size))
+    ds = ds.batch(32).prefetch(1)
+    forecast = model.predict(ds)
+    return forecast
+
+
+# In[29]:
+
+
+forecast = model_forecast(model, series_scaled[split_time - window_size: -1], window_size)[:,0]
+
+
+# In[30]:
+
+
+# odwrócenie skalowania danych
+forecast = scaler.inverse_transform(forecast.reshape(-1, 1))
+x_valid = scaler.inverse_transform(x_valid.reshape(-1, 1))
+
+
+# In[31]:
+
+
+# Obliczenie błędu
+mae_metric = tf.keras.metrics.MeanAbsoluteError()
+mae_metric.update_state(x_valid, forecast)
+mae = mae_metric.result().numpy()
+mean_value = np.mean(x_valid)
+percentage_error = np.abs(mae / mean_value) * 100
+percentage_error_rounded = round(percentage_error, 2)
+print("Błąd wynosi:", percentage_error_rounded, '%') # ta informacja jest wazna
+
+
+# In[32]:
+
+
+future_forecast = []
+last_window = series_scaled[-window_size:]
+
+num_days = 10 # to będzie do wprowadzenia max 10
+
+for _ in range(num_days):
+    prediction = model.predict(last_window[np.newaxis])
+    future_forecast.append(prediction[0, 0])
+    last_window = np.roll(last_window, -1)
+    last_window[-1] = prediction[0, 0]
+
+future_forecast = np.array(future_forecast)
+future_forecast = scaler.inverse_transform(future_forecast.reshape(-1, 1))
+
+
+# In[33]:
+
+
+# wykres predykcji
+plt.figure(figsize=(10, 6))
+plt.plot(time_valid[-100:], x_valid[-100:], label='dane treningowe')
+plt.plot(time_valid[-100:], forecast[-100:], label='dane walidacyjne')
+time_future = np.arange(len(series), len(series) + num_days)
+plt.title(f'Wartość zamknięcia dla {tickers[ticker]}')
+plt.ylabel('Wartość [USD]')
+plt.xlabel('Dni')
+plt.plot(time_future, future_forecast, label='prognoza')
+plt.legend()
+plt.show()
+
+
+# In[34]:
+
+
+future_forecast = np.round(future_forecast, 2)
+print("wartości predykcji:")
+print(future_forecast)
+
+
+# In[35]:
+
+
+# całe wykonanie kodu w Spyder, to ok 21s. Nie jest źle :)
+total_time = tm.time()
+print(f"Całkowity czas wykonania: {total_time - start_time:.4f} sekundy")
+
+
+# In[36]:
+
+
+# Dobrze by było zrobić wybór :
+#     1. Analiza profesjonalna z wykresami pudełkowymi i analizą trendu oraz z możliwością wyboru zakresu dat i modelu
+#     2. Analiza uproszczona
 
