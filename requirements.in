@@ -4,3 +4,9 @@ pandas
 dash
 plotly
 gunicorn
+yfinance
+tensorflow
+matplotlib
+seaborn
+statsmodels
+
