@@ -13,6 +13,7 @@ import pickle
 from datetime import datetime, timedelta
 from er_forecast import make_lr_forecast
 from functions import get_yfinance_data, get_key_by_value, prepare_data_box_plot, prepare_data_decomp_trend
+from forecast_main import make_forecast
 import json
 import datetime
 
@@ -83,6 +84,20 @@ app.layout = html.Div([
         style={'display': 'none'}
     ),
 
+    dcc.Graph(
+        id='forecast-plot',
+        style={'display': 'none'}
+    ),
+
+    dash_table.DataTable(
+        id='predicted-table',
+        style_table={'overflowX': 'scroll'},
+        sort_action="native",
+        sort_mode="single", 
+        sort_by=[]
+    )
+    
+
 ])
 
 @app.callback(
@@ -94,6 +109,10 @@ app.layout = html.Div([
      Output('lr-plot', 'style'),
      Output('decomp-trend-plot', 'figure'),
      Output('decomp-trend-plot', 'style'),
+     Output('forecast-plot', 'figure'),
+     Output('forecast-plot', 'style'),
+     Output('predicted-table', 'columns'),
+     Output('predicted-table', 'data'),
      Output('predict-days-input', 'value'),
      Output('base-ticker-dropdown', 'value'),
     Output('date-picker-range', 'start_date'),
@@ -110,7 +129,7 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
+         return dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
 
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
@@ -147,13 +166,46 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
         fig_trend.data[0].name = 'Decomposed Trend'
         fig_trend.update_layout(legend_title_text='')
 
-        return fig_line, {'display': 'block'}, fig_box, {'display': 'block'},fig_lr, {'display': 'block'},fig_trend, {'display': 'block'}, predict_days, selected_ticker, start_date, end_date
+        #making forecast using NN
+        percentage_error_rounded, future_forecast, forecast, X_valid, time_valid = make_forecast(start_date, end_date, selected_ticker, predict_days)
+        n_valid = len(time_valid)
+        data_valid = data[-n_valid:]
+        future_dates = pd.date_range(start=data_valid.index[-1], periods=len(future_forecast) + 1, freq='D')[1:]
+        dates = data_valid.index
+        combined_dates = np.concatenate([dates, future_dates])
+        X_valid_tranformed = list(X_valid) + [np.nan] * len(future_forecast)
+        forecast_transformed = list(forecast) + [np.nan] * len(future_forecast)
+        future_forecast_transformed = [np.nan] * len(forecast) + list(future_forecast)
+        df_forecast = pd.DataFrame({
+            'dates': combined_dates, 
+            'X_valid': X_valid_tranformed,
+            'forecast': forecast_transformed,
+            'future_forecast': future_forecast_transformed
+        })
+        df_forecast = df_forecast.melt(id_vars=['dates'], value_vars=['X_valid', 'forecast', 'future_forecast'], var_name='type', value_name='value')
+        df_forecast['value'] = df_forecast['value'].astype(float)
+        fig_forecast = px.line(df_forecast, x='dates', y='value', color='type', 
+                       title=f'Forecast for {selected_ticker}')
+        fig_forecast.update_xaxes(title='Date')
+        fig_forecast.update_yaxes(title='Value')
+        fig_forecast.data[0].name = 'Predicted Value [Validation Data]'
+        fig_forecast.data[1].name = 'Actual Value [Validation Data]'
+        fig_forecast.data[2].name = f'Forecast for the next {predict_days} days'
+        fig_forecast.update_layout(legend_title_text='')
+
+        #result table
+        df_results = pd.DataFrame({'Date': future_dates.strftime('%Y-%m-%d'),
+                                   'Prediction': future_forecast.flatten()})
+        columns = [{"name": i, "id": i} for i in df_results.columns]
+        data_records = df_results.to_dict('records')
+
+        return fig_line, {'display': 'block'}, fig_box, {'display': 'block'}, fig_lr, {'display': 'block'}, fig_trend, {'display': 'block'}, fig_forecast, {'display': 'block'}, columns, data_records, predict_days, selected_ticker, start_date, end_date
 
     elif button_id == 'reset-button':
         # Reset the graph and input value
-        return {}, {'display': 'none'}, {}, {'display': 'none'},{}, {'display': 'none'},{}, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
+        return {}, {'display': 'none'}, {}, {'display': 'none'},{}, {'display': 'none'},{}, {'display': 'none'}, {}, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
 
-    return dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'},5, 'S&P 500', "2008-01-01", "2024-05-31"
+    return dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"
 
 #Run the app
 if __name__ == '__main__':

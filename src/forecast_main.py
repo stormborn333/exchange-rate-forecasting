@@ -13,6 +13,7 @@ import seaborn as sns
 import matplotlib.dates as mdates
 from statsmodels.tsa.seasonal import seasonal_decompose
 from sklearn.linear_model import LinearRegression
+from functions import get_yfinance_data, get_key_by_value
 import json
 
 # ustawienie ziarna i czyszczenie
@@ -25,7 +26,7 @@ WINDOW_SIZE = 25
 BATCH_SIZE = 64
 SHUFFLE_BUFFER_SIZE = 300
     
-def analyze_ticker(start_date, end_date, ticker_name, n_steps):
+def make_forecast(start_date, end_date, ticker_name, n_steps):
 
     #tickers data
     with open("data-utils/data-raw/tickers.json", 'r') as f:
@@ -33,7 +34,7 @@ def analyze_ticker(start_date, end_date, ticker_name, n_steps):
     ticker = get_key_by_value(data_tickers, ticker_name)
 
     #yahoo finance data
-    data = yf.download(ticker, start=start_date, end=end_date)
+    data = get_yfinance_data(ticker, start_date, end_date)
     series = data.Close.to_numpy() #y of the model
 
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -66,7 +67,7 @@ def analyze_ticker(start_date, end_date, ticker_name, n_steps):
     
     # przewidywanie wartości na podstawie modelu wytrenowanego
     forecast = model_forecast(model, series_scaled[split_time - WINDOW_SIZE: -1], WINDOW_SIZE)[:, 0]
-    
+
     # odwrócenie skalowania danych
     forecast = scaler.inverse_transform(forecast.reshape(-1, 1))
     x_valid = scaler.inverse_transform(x_valid.reshape(-1, 1))
@@ -93,14 +94,8 @@ def analyze_ticker(start_date, end_date, ticker_name, n_steps):
     future_forecast = scaler.inverse_transform(future_forecast.reshape(-1, 1))
     
     # Zwrócenie błądu i predykcji
-    return percentage_error_rounded, future_forecast
+    return percentage_error_rounded, future_forecast, forecast.flatten(), x_valid.flatten(), time_valid
    
-def get_key_by_value(d, value):
-    for key, val in d.items():
-        if val == value:
-            return key
-    return None
-
 def windowed_dataset(series_scaled, WINDOW_SIZE, BATCH_SIZE, SHUFFLE_BUFFER_SIZE):
         series_scaled = tf.expand_dims(series_scaled, axis=-1)
         dataset = tf.data.Dataset.from_tensor_slices(series_scaled)
@@ -119,24 +114,3 @@ def model_forecast(model, series_scaled, WINDOW_SIZE):
     forecast = model.predict(ds)
     return forecast
     
-
-
-
-# # Przykładowe dane - test
-# start_date = "2014-01-01" # minimalnie 10 lat aby to miało sens, max od 2008
-# end_date = "2024-01-01"
-# selected_ticker = "BZ=F"
-# days_to_forecast = 10
-
-# error_percentage, predicted_values = analyze_ticker(start_date, end_date, selected_ticker, days_to_forecast)
-
-# print(f"\nBłąd procentowy: {error_percentage}% \n")
-# print(f"Wartości predykcji:\n{predicted_values}\n")
-
-# # Wyświetlenie wygenerowanych plików JPG
-# from IPython.display import Image, display
-
-# filenames = ["zamkniecie.jpg", "pudelkowy.jpg", "dekompozycja.jpg", "prognoza.jpg"]
-
-# for filename in filenames:
-#     display(Image(filename=filename))
