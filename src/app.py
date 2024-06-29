@@ -6,122 +6,116 @@ import pandas as pd
 import numpy as np
 import dash
 from dash import dcc, html, dash_table
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 import plotly.express as px
 import os
 import pickle
 from datetime import datetime, timedelta
 from er_forecast import make_lr_forecast
+from functions import get_yfinance_data, get_key_by_value
+import json
+import datetime
 
-#getting data used for training lr model
-with open(
-    "data-utils/data-raw/lr_data.csv",
-    encoding="utf8",
-    errors="ignore",
-) as f:
-    df_lr: pd.DataFrame = pd.read_csv(f)
-X = df_lr['X']
-y = df_lr['y']
+#getting tickers data
+with open("data-utils/data-raw/tickers.json", 'r') as f:
+        data_tickers = json.load(f)
+ticker_names = list(data_tickers.values())
 
-#transforming X into dates
-d_today = datetime.today()
-d_100_ago = d_today - timedelta(days=100)
-d_range = pd.date_range(start=d_100_ago, end=d_today, periods=100)
-X_dates = [d_range[i-1] for i in X]
-
-#supported currencies
-available_currencies = ['EUR', 'PLN']
+#example data
+df = pd.DataFrame({
+    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
+    "Amount": [4, 1, 2, 2, 4, 5],
+    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
+})
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
 # Define the layout of the app
 app.layout = html.Div([
-    html.H1("Exchange Rates Forecasting"),
+    html.H1("Investment Decision Support System"),
 
-    html.Label('Select Base Currency:'),
+    html.Label('Select Financing Instrument:'),
     dcc.Dropdown(
-        id='base-currency-dropdown',
-        options=[{'label': currency, 'value': currency} for currency in available_currencies],
+        id='base-ticker-dropdown',
+        options=[{'label': ticker_name, 'value': ticker_name} for ticker_name in ticker_names],
         value='EUR'
-    ),
-
-    html.Label('Select Target Currency:'),
-    dcc.Dropdown(
-        id='target-currency-dropdown',
-        options=[{'label': currency, 'value': currency} for currency in available_currencies],
-        value='PLN'
     ),
 
     html.Label('Number of Days to Predict Ahead:'),
     dcc.Input(
         id='predict-days-input',
         type='number',
-        value=7  # Default value
+        value=5,  # Default value
+        min=1,
+        max=10
     ),
+
+    html.Label('Select Date Range:'),
+    dcc.DatePickerRange(
+        id='date-picker-range',
+        start_date="2008-01-01",
+        end_date="2024-05-31",
+        display_format='YYYY-MM-DD',
+        min_date_allowed = "2008-01-01",
+        max_date_allowed = "2024-05-31"
+    ),
+
+    html.Button('Generate results', id='generate-results-button', n_clicks=0),
+    html.Button('Reset', id='reset-button', n_clicks=0),
 
     dcc.Graph(
-        id='line-plot'
-    ),
-
-    html.H2("Predicted Exchange Rates"),
-    dash_table.DataTable(
-        id='predicted-table',
-        columns=[
-            {"name": "Date", "id": "Date"},
-            {"name": "Predicted Value", "id": "Predicted Value"}
-        ],
-        data=[],
-        style_table={'overflowX': 'scroll'},
-        sort_action="native",
-        sort_mode="single", 
-        sort_by=[]
+        id='stock-price'
     )
+
 ])
 
 @app.callback(
-    Output('line-plot', 'figure'),
-    Output('predicted-table', 'data'),
-    [
-        Input('base-currency-dropdown', 'value'),
-        Input('target-currency-dropdown', 'value'),
-        Input('predict-days-input', 'value')
-    ]
+    [Output('stock-price', 'figure'),
+     Output('stock-price', 'style'),
+     Output('predict-days-input', 'value'),
+     Output('base-ticker-dropdown', 'value'),
+    Output('date-picker-range', 'start_date'),
+     Output('date-picker-range', 'end_date')],
+    [Input('generate-results-button', 'n_clicks'),
+     Input('reset-button', 'n_clicks')],
+    [State('predict-days-input', 'value'),
+     State('base-ticker-dropdown', 'value'),
+      State('date-picker-range', 'start_date'),
+     State('date-picker-range', 'end_date')]
 )
-def update_plot(base_currency, target_currency, predict_days):
 
-    #making predictions
-    max_X = np.max(X)
-    y_pred = make_lr_forecast(max_X, predict_days)
-    X_dates_future = pd.date_range(start=X_dates[-1] + timedelta(days=1), 
-                                   periods=int(predict_days))
+def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start_date, end_date):
+    ctx = dash.callback_context
 
-    data = [
-        {'x': pd.to_datetime(X_dates).date, 'y': y, 'type': 'scatter', 'mode': 'lines', 'name': 'Historical values'},
-        {'x': pd.to_datetime(X_dates_future).date, 'y': y_pred, 'type': 'scatter', 'mode': 'lines', 'name': 'Forecast'}
-    ]
-    
-    # Layout of the plot
-    layout = {
-        'title': f'Exchange Rate: {base_currency} to {target_currency} [{predict_days} Days Forecast]',
-        'xaxis': {'title': 'Date'},
-        'yaxis': {'title': 'Exchange Rate'}
-    }
+    if not ctx.triggered:
+        return dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
 
-    # Data for the table
-    predicted_data = [
-        {'Date': date, 'Predicted Value': value} for date, value in zip(pd.to_datetime(X_dates_future).date.tolist(), y_pred.tolist())
-    ]
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    return {'data': data, 'layout': layout}, predicted_data
+    if button_id == 'generate-results-button':
 
+        ticker = get_key_by_value(data_tickers, selected_ticker)
+        data = get_yfinance_data(ticker, start_date, end_date)
 
-# Run the app
-# if __name__ == '__main__':
-#     app.run_server(debug=True)
+        fig = px.line(data, x=data.index, y='Close', title=f'Stock Price for {selected_ticker}')
+        fig.update_xaxes(title='Date')
+        fig.update_yaxes(title='Price')
 
-server = app.server
+        return fig, {'display': 'block'}, predict_days, selected_ticker, start_date, end_date
 
-if __name__ == "__main__":
-    app.run_server(host="0.0.0.0", port=8080)
+    elif button_id == 'reset-button':
+        # Reset the graph and input value
+        return {}, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
+
+    return dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"
+
+#Run the app
+if __name__ == '__main__':
+    app.run_server(debug=True)
+
+# server = app.server
+
+# if __name__ == "__main__":
+#     app.run_server(host="0.0.0.0", port=8080)
 
