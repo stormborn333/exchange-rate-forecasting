@@ -6,6 +6,9 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import datetime
+from statsmodels.tsa.seasonal import seasonal_decompose
+from sklearn.linear_model import LinearRegression
+import matplotlib.dates as mdates
 
 def get_yfinance_data(ticker, start_date, end_date):
 
@@ -28,4 +31,18 @@ def prepare_data_box_plot(data, start_date, end_date):
     data = data[-days_ses:]
 
     return data
+
+def prepare_data_decomp_trend(data):
+
+    result = seasonal_decompose(data.Close[:], model='None', period=360)
+    result_trend = result.trend.dropna()
+    data_decomp = result_trend.reset_index()
+    data_decomp['Date_num'] = mdates.date2num(data_decomp.Date)
+    model = LinearRegression()
+    X = data_decomp[['Date_num']]
+    y = data_decomp['trend']
+    model.fit(X, y)
+    y_pred = model.predict(X)
+
+    return result, data_decomp, y_pred
 
