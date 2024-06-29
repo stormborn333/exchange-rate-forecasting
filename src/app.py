@@ -22,13 +22,6 @@ with open("data-utils/data-raw/tickers.json", 'r') as f:
         data_tickers = json.load(f)
 ticker_names = list(data_tickers.values())
 
-#example data
-df = pd.DataFrame({
-    "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-    "Amount": [4, 1, 2, 2, 4, 5],
-    "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-})
-
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
@@ -36,6 +29,7 @@ app = dash.Dash(__name__)
 app.layout = html.Div([
     html.H1("Investment Decision Support System"),
 
+    # slicer for selecting ticker
     html.Label('Select Financing Instrument:'),
     dcc.Dropdown(
         id='base-ticker-dropdown',
@@ -43,15 +37,17 @@ app.layout = html.Div([
         value='EUR'
     ),
 
+    # slicer for selecting forecast steps
     html.Label('Number of Days to Predict Ahead:'),
     dcc.Input(
         id='predict-days-input',
         type='number',
         value=5,  # Default value
-        min=1,
-        max=10
+        min=1, # Min value
+        max=10 # Max value
     ),
 
+    # calendar slicer for selecting date range
     html.Label('Select Date Range:'),
     dcc.DatePickerRange(
         id='date-picker-range',
@@ -62,33 +58,32 @@ app.layout = html.Div([
         max_date_allowed = "2024-05-31"
     ),
 
+    # buttons
     html.Button('Generate results', id='generate-results-button', n_clicks=0),
     html.Button('Reset', id='reset-button', n_clicks=0),
 
+    # line graphs
     dcc.Graph(
         id='stock-price'
     ),
-
     dcc.Graph(
         id='box-plot',
         style={'display': 'none'}
     ),
-
      dcc.Graph(
         id='lr-plot',
         style={'display': 'none'}
     ),
-
     dcc.Graph(
         id='decomp-trend-plot',
         style={'display': 'none'}
     ),
-
     dcc.Graph(
         id='forecast-plot',
         style={'display': 'none'}
     ),
 
+    # result ables
     dash_table.DataTable(
         id='predicted-table',
         style_table={'overflowX': 'scroll'},
@@ -100,6 +95,7 @@ app.layout = html.Div([
 
 ])
 
+# dash app callbacks
 @app.callback(
     [Output('stock-price', 'figure'),
      Output('stock-price', 'style'),
@@ -115,26 +111,31 @@ app.layout = html.Div([
      Output('predicted-table', 'data'),
      Output('predict-days-input', 'value'),
      Output('base-ticker-dropdown', 'value'),
-    Output('date-picker-range', 'start_date'),
+     Output('date-picker-range', 'start_date'),
      Output('date-picker-range', 'end_date')],
     [Input('generate-results-button', 'n_clicks'),
      Input('reset-button', 'n_clicks')],
     [State('predict-days-input', 'value'),
      State('base-ticker-dropdown', 'value'),
-      State('date-picker-range', 'start_date'),
+     State('date-picker-range', 'start_date'),
      State('date-picker-range', 'end_date')]
 )
 
+# function for creating visualizations
 def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start_date, end_date):
     ctx = dash.callback_context
 
     if not ctx.triggered:
-         return dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
+         return (dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, 
+                 dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, 
+                 dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", 
+                 "2024-05-31") # default values after reset
 
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
     if button_id == 'generate-results-button':
 
+        # geting ticker and yfinance data
         ticker = get_key_by_value(data_tickers, selected_ticker)
         data = get_yfinance_data(ticker, start_date, end_date)
 
@@ -168,14 +169,16 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
 
         #making forecast using NN
         percentage_error_rounded, future_forecast, forecast, X_valid, time_valid = make_forecast(start_date, end_date, selected_ticker, predict_days)
-        n_valid = len(time_valid)
-        data_valid = data[-n_valid:]
-        future_dates = pd.date_range(start=data_valid.index[-1], periods=len(future_forecast) + 1, freq='D')[1:]
-        dates = data_valid.index
-        combined_dates = np.concatenate([dates, future_dates])
+        n_valid = len(time_valid) # number of predictions from val set
+        data_valid = data[-n_valid:] # val data to be used for visualization
+        future_dates = pd.date_range(start=data_valid.index[-1], periods=len(future_forecast) + 1, freq='D')[1:] # generating future dates based on provided param
+        dates_val = data_valid.index # val dates
+        combined_dates = np.concatenate([dates_val, future_dates]) # combining val and future dates
+        #transforming values to be in the same shape
         X_valid_tranformed = list(X_valid) + [np.nan] * len(future_forecast)
         forecast_transformed = list(forecast) + [np.nan] * len(future_forecast)
         future_forecast_transformed = [np.nan] * len(forecast) + list(future_forecast)
+        # df contaning combined data
         df_forecast = pd.DataFrame({
             'dates': combined_dates, 
             'X_valid': X_valid_tranformed,
@@ -199,13 +202,17 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
         columns = [{"name": i, "id": i} for i in df_results.columns]
         data_records = df_results.to_dict('records')
 
-        return fig_line, {'display': 'block'}, fig_box, {'display': 'block'}, fig_lr, {'display': 'block'}, fig_trend, {'display': 'block'}, fig_forecast, {'display': 'block'}, columns, data_records, predict_days, selected_ticker, start_date, end_date
+        return (fig_line, {'display': 'block'}, fig_box, {'display': 'block'}, fig_lr, {'display': 'block'}, 
+                fig_trend, {'display': 'block'}, fig_forecast, {'display': 'block'}, columns, data_records, 
+                predict_days, selected_ticker, start_date, end_date) # output values
 
     elif button_id == 'reset-button':
-        # Reset the graph and input value
-        return {}, {'display': 'none'}, {}, {'display': 'none'},{}, {'display': 'none'},{}, {'display': 'none'}, {}, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
+        # reset the graph and input value
+        return ({}, {'display': 'none'}, {}, {'display': 'none'},{}, {'display': 'none'},{}, {'display': 'none'}, 
+                {}, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31")
 
-    return dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31"
+    return (dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, dash.no_update, 
+            {'display': 'none'},dash.no_update, {'display': 'none'}, [],[], 5, 'S&P 500', "2008-01-01", "2024-05-31")
 
 #Run the app
 if __name__ == '__main__':
