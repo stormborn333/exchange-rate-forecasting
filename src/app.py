@@ -12,7 +12,7 @@ import os
 import pickle
 from datetime import datetime, timedelta
 from er_forecast import make_lr_forecast
-from functions import get_yfinance_data, get_key_by_value
+from functions import get_yfinance_data, get_key_by_value, prepare_data_box_plot
 import json
 import datetime
 
@@ -66,6 +66,11 @@ app.layout = html.Div([
 
     dcc.Graph(
         id='stock-price'
+    ),
+
+    dcc.Graph(
+        id='box-plot',
+        style={'display': 'none'}
     )
 
 ])
@@ -73,6 +78,8 @@ app.layout = html.Div([
 @app.callback(
     [Output('stock-price', 'figure'),
      Output('stock-price', 'style'),
+     Output('box-plot', 'figure'),
+     Output('box-plot', 'style'),
      Output('predict-days-input', 'value'),
      Output('base-ticker-dropdown', 'value'),
     Output('date-picker-range', 'start_date'),
@@ -89,7 +96,7 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
     ctx = dash.callback_context
 
     if not ctx.triggered:
-        return dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
+        return dash.no_update, {'display': 'none'}, dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Default value for predict-days-input
 
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
@@ -98,17 +105,23 @@ def update_graph(show_clicks, reset_clicks, predict_days, selected_ticker, start
         ticker = get_key_by_value(data_tickers, selected_ticker)
         data = get_yfinance_data(ticker, start_date, end_date)
 
-        fig = px.line(data, x=data.index, y='Close', title=f'Stock Price for {selected_ticker}')
-        fig.update_xaxes(title='Date')
-        fig.update_yaxes(title='Price')
+        fig_line = px.line(data, x=data.index, y='Close', title=f'Stock Price for {selected_ticker}')
+        fig_line.update_xaxes(title='Date')
+        fig_line.update_yaxes(title='Price')
 
-        return fig, {'display': 'block'}, predict_days, selected_ticker, start_date, end_date
+        data_box = prepare_data_box_plot(data, start_date, end_date)
+
+        fig_box = px.box(data_box, y='Close', x = 'Month', title=f'Stock Price Distribution for {selected_ticker} by Months')
+        fig_box.update_xaxes(title='Month')
+        fig_box.update_yaxes(title='Price')
+
+        return fig_line, {'display': 'block'}, fig_box, {'display': 'block'}, predict_days, selected_ticker, start_date, end_date
 
     elif button_id == 'reset-button':
         # Reset the graph and input value
-        return {}, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
+        return {}, {'display': 'none'}, {}, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"  # Reset value for predict-days-input
 
-    return dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"
+    return dash.no_update, {'display': 'none'},dash.no_update, {'display': 'none'}, 5, 'S&P 500', "2008-01-01", "2024-05-31"
 
 #Run the app
 if __name__ == '__main__':
