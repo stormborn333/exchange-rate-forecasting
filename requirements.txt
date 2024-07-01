@@ -9,10 +9,14 @@ absl-py==2.1.0
     #   keras
     #   tensorboard
     #   tensorflow
+astroid==3.2.2
+    # via pylint
 astunparse==1.6.3
     # via tensorflow
 beautifulsoup4==4.12.3
     # via yfinance
+black==24.4.2
+    # via -r requirements.in
 blinker==1.8.2
     # via flask
 certifi==2024.6.2
@@ -20,7 +24,9 @@ certifi==2024.6.2
 charset-normalizer==3.3.2
     # via requests
 click==8.1.7
-    # via flask
+    # via
+    #   black
+    #   flask
 contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
@@ -33,6 +39,8 @@ dash-html-components==2.0.0
     # via dash
 dash-table==5.0.0
     # via dash
+dill==0.3.8
+    # via pylint
 flask==3.0.3
     # via dash
 flatbuffers==24.3.25
@@ -66,6 +74,8 @@ importlib-metadata==8.0.0
     #   markdown
 importlib-resources==6.4.0
     # via matplotlib
+isort==5.13.2
+    # via pylint
 itsdangerous==2.2.0
     # via flask
 jinja2==3.1.4
@@ -92,6 +102,8 @@ matplotlib==3.9.0
     # via
     #   -r requirements.in
     #   seaborn
+mccabe==0.7.0
+    # via pylint
 mdurl==0.1.2
     # via markdown-it-py
 ml-dtypes==0.3.2
@@ -100,6 +112,8 @@ ml-dtypes==0.3.2
     #   tensorflow
 multitasking==0.0.11
     # via yfinance
+mypy-extensions==1.0.0
+    # via black
 namex==0.0.8
     # via keras
 nest-asyncio==1.6.0
@@ -128,6 +142,7 @@ optree==0.11.0
     # via keras
 packaging==24.1
     # via
+    #   black
     #   gunicorn
     #   keras
     #   matplotlib
@@ -140,6 +155,8 @@ pandas==2.2.2
     #   seaborn
     #   statsmodels
     #   yfinance
+pathspec==0.12.1
+    # via black
 patsy==0.5.6
     # via statsmodels
 peewee==3.17.5
@@ -147,7 +164,10 @@ peewee==3.17.5
 pillow==10.3.0
     # via matplotlib
 platformdirs==4.2.2
-    # via yfinance
+    # via
+    #   black
+    #   pylint
+    #   yfinance
 plotly==5.22.0
     # via
     #   -r requirements.in
@@ -158,6 +178,8 @@ protobuf==4.25.3
     #   tensorflow
 pygments==2.18.0
     # via rich
+pylint==3.2.5
+    # via -r requirements.in
 pyparsing==3.1.2
     # via matplotlib
 python-dateutil==2.9.0.post0
@@ -213,10 +235,19 @@ termcolor==2.4.0
     # via tensorflow
 threadpoolctl==3.5.0
     # via scikit-learn
+tomli==2.0.1
+    # via
+    #   black
+    #   pylint
+tomlkit==0.12.5
+    # via pylint
 typing-extensions==4.12.2
     # via
+    #   astroid
+    #   black
     #   dash
     #   optree
+    #   pylint
     #   tensorflow
 tzdata==2024.1
     # via pandas
