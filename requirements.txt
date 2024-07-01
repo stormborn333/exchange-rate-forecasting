@@ -41,6 +41,8 @@ dash-table==5.0.0
     # via dash
 dill==0.3.8
     # via pylint
+exceptiongroup==1.2.1
+    # via pytest
 flask==3.0.3
     # via dash
 flatbuffers==24.3.25
@@ -74,6 +76,8 @@ importlib-metadata==8.0.0
     #   markdown
 importlib-resources==6.4.0
     # via matplotlib
+iniconfig==2.0.0
+    # via pytest
 isort==5.13.2
     # via pylint
 itsdangerous==2.2.0
@@ -147,6 +151,7 @@ packaging==24.1
     #   keras
     #   matplotlib
     #   plotly
+    #   pytest
     #   statsmodels
     #   tensorflow
 pandas==2.2.2
@@ -172,6 +177,8 @@ plotly==5.22.0
     # via
     #   -r requirements.in
     #   dash
+pluggy==1.5.0
+    # via pytest
 protobuf==4.25.3
     # via
     #   tensorboard
@@ -182,6 +189,8 @@ pylint==3.2.5
     # via -r requirements.in
 pyparsing==3.1.2
     # via matplotlib
+pytest==8.2.2
+    # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
     #   matplotlib
@@ -239,6 +248,7 @@ tomli==2.0.1
     # via
     #   black
     #   pylint
+    #   pytest
 tomlkit==0.12.5
     # via pylint
 typing-extensions==4.12.2

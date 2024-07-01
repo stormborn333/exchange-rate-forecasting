@@ -3,6 +3,7 @@ Main file of the project responsible for final dashboard created in Dash
 """
 
 import json
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import dash
@@ -20,7 +21,7 @@ from forecast_main import make_forecast
 # getting tickers data
 with open("data-utils/data-raw/tickers.json", "r", encoding="utf-8") as f:
     data_tickers = json.load(f)
-ticker_names = list(data_tickers.values())
+ticker_names = list(data_tickers.values())[11:]
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
@@ -53,10 +54,10 @@ app.layout = html.Div(
         dcc.DatePickerRange(
             id="date-picker-range",
             start_date="2008-01-01",
-            end_date="2024-05-31",
+            end_date=datetime.now().strftime("%Y-%m-%d"),
             display_format="YYYY-MM-DD",
             min_date_allowed="2008-01-01",
-            max_date_allowed="2024-05-31",
+            max_date_allowed=datetime.now().strftime("%Y-%m-%d"),
         ),
         # buttons
         html.Button("Generate results", id="generate-results-button", n_clicks=0),
@@ -165,8 +166,7 @@ def update_graph( # pylint: disable=too-many-locals
             5,
             "S&P 500",
             "2008-01-01",
-            "2024-05-31",
-        )  # default values after reset
+            datetime.now().strftime("%Y-%m-%d")) # default values after reset
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
@@ -175,6 +175,7 @@ def update_graph( # pylint: disable=too-many-locals
         # geting ticker and yfinance data
         ticker = get_key_by_value(data_tickers, selected_ticker)
         data = get_yfinance_data(ticker, start_date, end_date)
+        print(data)
 
         # line plot for Close values
         fig_line = px.line(
@@ -248,6 +249,7 @@ def update_graph( # pylint: disable=too-many-locals
                 "future_forecast": future_forecast_transformed,
             }
         )
+        df_forecast = df_forecast [-100:]
         df_forecast = df_forecast.melt(
             id_vars=["dates"],
             value_vars=["X_valid", "forecast", "future_forecast"],
@@ -272,7 +274,7 @@ def update_graph( # pylint: disable=too-many-locals
         # result table
         df_results = pd.DataFrame(
             {
-                "Date": future_dates.strftime("%Y-%m-%d"),
+                "Date": future_dates.strftime('%Y-%m-%d'),
                 "Prediction": future_forecast.flatten(),
             }
         )
@@ -316,8 +318,7 @@ def update_graph( # pylint: disable=too-many-locals
             5,
             "S&P 500",
             "2008-01-01",
-            "2024-05-31",
-        )
+             datetime.now().strftime("%Y-%m-%d"))
 
     return (
         dash.no_update,
@@ -335,8 +336,7 @@ def update_graph( # pylint: disable=too-many-locals
         5,
         "S&P 500",
         "2008-01-01",
-        "2024-05-31",
-    )
+         datetime.now().strftime("%Y-%m-%d"))
 
 
 # local version of Dash app

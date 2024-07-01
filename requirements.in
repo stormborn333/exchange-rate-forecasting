@@ -11,4 +11,4 @@ seaborn
 statsmodels
 black
 pylint
-
+pytest
