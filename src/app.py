@@ -110,8 +110,13 @@ app.layout = html.Div(
 )
 
 # function for creating visualizations
-def update_graph( # pylint: disable=too-many-locals
-    _sclicks, _rclicks, predict_days: int, selected_ticker: str, start_date: str, end_date: str
+def update_graph(  # pylint: disable=too-many-locals disable=too-many-statements
+    _sclicks: int,
+    _rclicks: int,
+    predict_days: int,
+    selected_ticker: str,
+    start_date: str,
+    end_date: str,
 ):
     """
     Update the stock price graphs and forecast based on user interaction.
@@ -166,7 +171,8 @@ def update_graph( # pylint: disable=too-many-locals
             5,
             "S&P 500",
             "2008-01-01",
-            datetime.now().strftime("%Y-%m-%d")) # default values after reset
+            datetime.now().strftime("%Y-%m-%d"),
+        )  # default values after reset
 
     button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
@@ -249,7 +255,7 @@ def update_graph( # pylint: disable=too-many-locals
                 "future_forecast": future_forecast_transformed,
             }
         )
-        df_forecast = df_forecast [-100:]
+        df_forecast = df_forecast[-100:]
         df_forecast = df_forecast.melt(
             id_vars=["dates"],
             value_vars=["X_valid", "forecast", "future_forecast"],
@@ -274,7 +280,7 @@ def update_graph( # pylint: disable=too-many-locals
         # result table
         df_results = pd.DataFrame(
             {
-                "Date": future_dates.strftime('%Y-%m-%d'),
+                "Date": future_dates.strftime("%Y-%m-%d"),
                 "Prediction": future_forecast.flatten(),
             }
         )
@@ -318,7 +324,8 @@ def update_graph( # pylint: disable=too-many-locals
             5,
             "S&P 500",
             "2008-01-01",
-             datetime.now().strftime("%Y-%m-%d"))
+            datetime.now().strftime("%Y-%m-%d"),
+        )
 
     return (
         dash.no_update,
@@ -336,7 +343,8 @@ def update_graph( # pylint: disable=too-many-locals
         5,
         "S&P 500",
         "2008-01-01",
-         datetime.now().strftime("%Y-%m-%d"))
+        datetime.now().strftime("%Y-%m-%d"),
+    )
 
 
 # local version of Dash app
