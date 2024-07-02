@@ -1,27 +1,45 @@
-# exchange-rate-forecasting
-TODO opis projeku
+# financial-instruments-forecasting
+This repository contains a web application built with Dash, designed to support investment decisions through data visualization. 
+The dashboard facilitates analysis of selected financial instruments using data fetched from Yahoo Finance using the `yfinance` library in Python. 
+Key functionalities include:
 
-## Uzywanie aplikacji
+- Selection of desired financial instruments.
+- Prediction of future values using an RNN (Recurrent Neural Network) implemented with TensorFlow.
+- Selection of date ranges to generate analysis based on user inputs.
 
-1. Sklonuj repozytorium na twoją lokalną maszynę
+### Important Information:
+
+- **Prediction Limitations:** The dashboard allows predictions up to ten days into the future.
+- **Date Range:** The available data ranges from January 1, 2008, to today's date.
+
+### Usage Instructions:
+
+To effectively use the dashboard:
+- Use the **'Generate results'** button to generate visualizations based on your inputs. Note that this process may take some time.
+- Use the **'Reset'** button to reset the dashboard to its initial state, clearing any visualizations.
+
+
+## Using the Application
+
+1. Clone the repository to your local machine:
 
  ```sh
-    git clone https://github.com/stormborn333/exchange-rate-forecasting
+    git clone https://github.com/stormborn333/financial-instruments-forecasting
     cd exchange-rate-forecasting
 ```
 
-2. Budowanie Docker Image
+2. Build Docker Image:
 
 ```sh
-    docker build -t dash_app .
+    make docker-build
 ```
 
-3. Uruchamianie Docker Container
+3. Run Docker Container:
 
 ```sh
-    docker run -p 8080:8080 dash_app
+    make docker-run
 ```
 
-4. Wklej ponizszy adres do twojej przeglądarki
+4. Open the following address in your web browser:
 
 **http://localhost:8080**
