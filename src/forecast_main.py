@@ -6,7 +6,7 @@ File containing main function responsible for making forecast
 # library import
 import json
 import numpy as np
-from tensorflow import ( # pylint: disable=no-name-in-module)
+from tensorflow import (  # pylint: disable=no-name-in-module)
     keras,
     random,
     expand_dims,
