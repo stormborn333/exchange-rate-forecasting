@@ -1,0 +1,17 @@
+name: Black
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      # Run Black only on src/ folder
+      - name: Run Black
+        uses: psf/black@stable
+        with:
+          targets: src/
