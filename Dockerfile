@@ -15,7 +15,7 @@ COPY . .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/ .
+COPY src/forecast_main.py src/test_functions.py src/functions.py src/conftest.py /app/
 
 EXPOSE 8080
 
