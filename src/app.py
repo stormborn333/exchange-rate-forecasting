@@ -348,10 +348,10 @@ def update_graph(  # pylint: disable=too-many-locals disable=too-many-statements
 
 
 # local version of Dash app
-if __name__ == "__main__":
-    app.run_server(debug=True)
+# if __name__ == "__main__":
+#     app.run_server(debug=True)
 
 # running Dash app using Docker
-# server = app.server
-# if __name__ == "__main__":
-#     app.run_server(host="0.0.0.0", port=8080)
+server = app.server
+if __name__ == "__main__":
+    app.run_server(host="0.0.0.0", port=8080)

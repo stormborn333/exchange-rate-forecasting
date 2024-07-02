@@ -166,7 +166,7 @@ patsy==0.5.6
     # via statsmodels
 peewee==3.17.5
     # via yfinance
-pillow==10.3.0
+pillow==10.4.0
     # via matplotlib
 platformdirs==4.2.2
     # via
@@ -236,9 +236,9 @@ tensorboard==2.16.2
     # via tensorflow
 tensorboard-data-server==0.7.2
     # via tensorboard
-tensorflow==2.16.1
+tensorflow==2.16.2
     # via -r requirements.in
-tensorflow-io-gcs-filesystem==0.37.0
+tensorflow-io-gcs-filesystem==0.37.1
     # via tensorflow
 termcolor==2.4.0
     # via tensorflow
